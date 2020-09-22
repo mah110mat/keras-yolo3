@@ -106,3 +106,16 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# Custom
+images/
+resize_image/
+VOCdevkit/
+2007_test.txt
+2007_train.txt
+2007_val.txt
+yolo_logs/
+tmp_gt_files/
+tmp_gt_files_org/
+tmp_pred_files/
+.vscode/
