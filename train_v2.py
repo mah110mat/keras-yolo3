@@ -16,7 +16,7 @@ from keras.models import Model
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard
 
-from yolo3.model import preprocess_true_boxes, yolo_body, yolo_loss, yolo_eval_v2
+from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_loss, yolo_eval_v2
 from yolo3.utils import get_random_data, letterbox_image
 
 from tensorboard_logging import log_scalar, log_images, log_histogram
@@ -27,8 +27,7 @@ DATA_PATH = '/home/share'
 parser = argparse.ArgumentParser(description='Yolo v3 Keras base on TensorFlow implementation.')
 parser.add_argument('--classes_file', type=str, help='The .txt file include dataset <classes>',
                     default='model_data/voc_classes.txt')
-parser.add_argument('--anchors_file', type=str, help='The .txt file include yolo anchors type',
-                    default='model_data/yolo_anchors.txt')
+parser.add_argument('--anchors_file', type=str, help='The .txt file include yolo anchors type')
 # Train File
 parser.add_argument('--yolo_train_file', type=str, help='The .txt file include <img path>, <bbox>, <class>',
                     default=DATA_PATH + '/dataset/BDD/train.txt')
@@ -64,7 +63,11 @@ class Yolo(object):
         # training batch size
         self.step1_batch_size = 32
         self.step2_batch_size = 8  # note that more GPU memory is required after unfreezing the body
-        self.yolo_model, self.yolo_body = self.create_model(yolo_weights_path='model_data/yolo_weights.h5')
+        self.is_tiny_version = len(self.anchors) == 6  # default setting
+        if self.is_tiny_version:
+            self.yolo_model, self.yolo_body = self.create_model_tiny(yolo_weights_path='model_data/tiny_yolo_weights.h5')
+        else:
+            self.yolo_model, self.yolo_body = self.create_model(yolo_weights_path='model_data/yolo_weights.h5')
 
         # PIL setting
         self.image_size = (1280, 720, 3)
@@ -102,6 +105,7 @@ class Yolo(object):
         self.callback = TensorBoard(LOGS_PATH)
         self.callback.set_model(self.yolo_model)
 
+    # yolov3 create_model
     def create_model(self, load_pretrained=True, freeze_body=2,
                      yolo_weights_path='model_data/yolo_weights.h5'):
         K.clear_session()  # get a new session
@@ -128,6 +132,40 @@ class Yolo(object):
                                num_anchors // 3, self.num_classes + 5)) for l in range(3)]
         model_loss = Lambda(yolo_loss, output_shape=(1,), name='yolo_loss',
                             arguments={'anchors': self.anchors, 'num_classes': self.num_classes, 'ignore_thresh': 0.5})(
+            [*model_body.output, *y_true])
+        yolo_model = Model(inputs=[image_input, *y_true], outputs=model_loss)
+        print('==========================================   Yolo Body   =========================================')
+        yolo_model.summary()
+        return yolo_model, model_body
+
+    # yolov3-tiny create_model
+    def create_model_tiny(self, load_pretrained=True, freeze_body=2,
+                     yolo_weights_path='model_data/tiny_yolo_weights.h5'):
+        K.clear_session()  # get a new session
+        image_input = Input(shape=self.shape)
+        # image_input = Input(shape=(None, None, 3))
+        h, w = self.input_shape
+        num_anchors = len(self.anchors)
+
+        model_body = tiny_yolo_body(image_input, num_anchors // 2, self.num_classes)
+        print('Create YOLOv3 model with {} anchors and {} classes.'.format(num_anchors, self.num_classes))
+
+        if load_pretrained:
+            model_body.load_weights(yolo_weights_path, by_name=True, skip_mismatch=True)
+            print('Load Yolo weights {}.'.format(yolo_weights_path))
+            if freeze_body in [1, 2]:
+                # Freeze the darknet body or freeze all but 2 output layers.
+                num = (20, len(model_body.layers) - 2)[freeze_body - 1]
+                for i in range(num): model_body.layers[i].trainable = False
+                print('Freeze the first {} layers of total {} layers.'.format(num, len(model_body.layers)))
+
+        # -------------------------------
+        #          Yolo Detector
+        # -------------------------------
+        y_true = [Input(shape=(h // {0: 32, 1: 16}[l], w // {0: 32, 1: 16}[l],
+                               num_anchors // 2, self.num_classes + 5)) for l in range(2)]
+        model_loss = Lambda(yolo_loss, output_shape=(1,), name='yolo_loss',
+                            arguments={'anchors': self.anchors, 'num_classes': self.num_classes, 'ignore_thresh': 0.7})(
             [*model_body.output, *y_true])
         yolo_model = Model(inputs=[image_input, *y_true], outputs=model_loss)
         print('==========================================   Yolo Body   =========================================')
@@ -229,6 +267,8 @@ class Yolo(object):
                 if mAP > mAP_maximum:
                     self.yolo_body.save_weights(
                         os.path.join(MODELS_PATH, 'Step2_yolo_weight_mAP_best.h5'.format((step - start) // epoch)))
+                    self.yolo_body.save(
+                        os.path.join(MODELS_PATH, 'Step2_yolo_model_mAP_best.h5'.format((step - start) // epoch)))
                     mAP_maximum = mAP
                     mAP_save_dict[str((step - start) // epoch)] = mAP
 
@@ -277,18 +317,39 @@ class Yolo(object):
                 files_id.append(file_id)
             images = np.array(images)
 
-            out_bboxes_1, out_bboxes_2, out_bboxes_3 = self.yolo_body.predict_on_batch(images)
-            for i, out in enumerate(zip(out_bboxes_1, out_bboxes_2, out_bboxes_3)):
-                # Predict
-                out_boxes, out_scores, out_classes = self.sess.run(
-                    [self.boxes, self.scores, self.classes],
+            """
+            yolov3 output y1,y2,y3
+            yolov3-tiny output y1,y2
+            """
+            if self.is_tiny_version:
+                out_bboxes_1, out_bboxes_2 = self.yolo_body.predict_on_batch(images)
+                output_list = zip(out_bboxes_1, out_bboxes_2)
+            else:
+                out_bboxes_1, out_bboxes_2, out_bboxes_3 = self.yolo_body.predict_on_batch(images)
+                output_list = zip(out_bboxes_1, out_bboxes_2, out_bboxes_3)
+
+            for i, out in enumerate(output_list):
+                if self.is_tiny_version:
+                    feed_dict={
+                        # self.eval_inputs: out
+                        self.eval_inputs[0]: np.expand_dims(out[0], 0),
+                        self.eval_inputs[1]: np.expand_dims(out[1], 0),
+                        self.input_image_shape: images_shape[i]
+                    }
+                else:
                     feed_dict={
                         # self.eval_inputs: out
                         self.eval_inputs[0]: np.expand_dims(out[0], 0),
                         self.eval_inputs[1]: np.expand_dims(out[1], 0),
                         self.eval_inputs[2]: np.expand_dims(out[2], 0),
                         self.input_image_shape: images_shape[i]
-                    })
+                    }
+
+                # Predict
+                out_boxes, out_scores, out_classes = self.sess.run(
+                    [self.boxes, self.scores, self.classes],
+                    feed_dict=feed_dict
+                    )
 
                 image = np.array(images_org[i])
                 ord_h = image.shape[0]
@@ -421,15 +482,26 @@ class Yolo(object):
     def save_yolo_histogram(self, step, tag=""):
         if tag:
             tag = '_' + tag + '_'
-        for i in range(1, 75):
-            layer_name = "conv2d_{}".format(i)
-            if i in (59, 67, 75):
-                weights, biases = self.yolo_model.get_layer(layer_name).get_weights()
-                log_histogram(self.callback, 'Yolo' + tag + 'Output/' + layer_name + '_weights', weights, step)
-                log_histogram(self.callback, 'Yolo' + tag + 'Output/' + layer_name + '_biases', biases, step)
-            else:
-                weights = self.yolo_model.get_layer(layer_name).get_weights()
-                log_histogram(self.callback, 'Yolo' + tag + 'Detector/' + layer_name, weights, step)
+        if self.is_tiny_version:
+            for i in range(1, 13):
+                layer_name = "conv2d_{}".format(i)
+                if i in (10, 13):
+                    weights, biases = self.yolo_model.get_layer(layer_name).get_weights()
+                    log_histogram(self.callback, 'Yolo' + tag + 'Output/' + layer_name + '_weights', weights, step)
+                    log_histogram(self.callback, 'Yolo' + tag + 'Output/' + layer_name + '_biases', biases, step)
+                else:
+                    weights = self.yolo_model.get_layer(layer_name).get_weights()
+                    log_histogram(self.callback, 'Yolo' + tag + 'Detector/' + layer_name, weights, step)
+        else:
+            for i in range(1, 75):
+                layer_name = "conv2d_{}".format(i)
+                if i in (59, 67, 75):
+                    weights, biases = self.yolo_model.get_layer(layer_name).get_weights()
+                    log_histogram(self.callback, 'Yolo' + tag + 'Output/' + layer_name + '_weights', weights, step)
+                    log_histogram(self.callback, 'Yolo' + tag + 'Output/' + layer_name + '_biases', biases, step)
+                else:
+                    weights = self.yolo_model.get_layer(layer_name).get_weights()
+                    log_histogram(self.callback, 'Yolo' + tag + 'Detector/' + layer_name, weights, step)
 
     def read_txt_file(self):
         # Training data
