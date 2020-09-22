@@ -285,7 +285,14 @@ video_FourCC    = int(vid.get(cv2.CAP_PROP_FOURCC))
 video_FourCC    =  cv2.VideoWriter_fourcc(*'MP4V') #OpenCV 3(Python 3.6)では、MP4Vがavc1と認識されるので固定値で設定
 ```
 
-# 10. gitignoreへの追加
+# 10. TensorBoardへの対応したtrain_v2.pyをyolov3-tiny 対応に変更
+
+[ TensorBoard対応のプルリクエスト](https://github.com/qqwweee/keras-yolo3/pull/206)はyolov3-tiny 対応ではなかったため、対応するように変更（Y.A.さんに感謝します。）
+
+https://github.com/tfukumori/keras-yolo3/commit/564cce259df453366b64921f34412e5dcd65cc64
+
+
+# 11. gitignoreへの追加
 
 gitでソース管理する場合は、以下を`.gitignore`に追加します。
 
