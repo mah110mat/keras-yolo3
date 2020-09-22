@@ -22,13 +22,13 @@ python yolo_video.py [OPTIONS...] --image, for image detection mode, OR
 python yolo_video.py [video_path] [output_path (optional)]
 ```
 
-For Tiny YOLOv3, just do in a similar way, just specify model path and anchor path with `--model model_file` and `--anchors anchor_file`.
+For Tiny YOLOv3, just do in a similar way, just specify model path and anchor path with `--model_path model_file` and `--anchors_path anchor_file`.
 
 ### Usage
 Use --help to see usage of yolo_video.py:
 ```
-usage: yolo_video.py [-h] [--model MODEL] [--anchors ANCHORS]
-                     [--classes CLASSES] [--gpu_num GPU_NUM] [--image]
+usage: yolo_video.py [-h] [--model_path MODEL] [--anchors_path ANCHORS]
+                     [--classes_path CLASSES] [--gpu_num GPU_NUM] [--image]
                      [--input] [--output]
 
 positional arguments:
@@ -36,14 +36,14 @@ positional arguments:
   --output       Video output path
 
 optional arguments:
-  -h, --help         show this help message and exit
-  --model MODEL      path to model weight file, default model_data/yolo.h5
-  --anchors ANCHORS  path to anchor definitions, default
+  -h, --help              show this help message and exit
+  --model_path MODEL      path to model weight file, default model_data/yolo.h5
+  --anchors_path ANCHORS  path to anchor definitions, default
                      model_data/yolo_anchors.txt
-  --classes CLASSES  path to class definitions, default
+  --classes_path CLASSES  path to class definitions, default
                      model_data/coco_classes.txt
-  --gpu_num GPU_NUM  Number of GPU to use, default 1
-  --image            Image detection mode, will ignore all positional arguments
+  --gpu_num GPU_NUM       Number of GPU to use, default 1
+  --image                 Image detection mode, will ignore all positional arguments
 ```
 ---
 
@@ -68,8 +68,8 @@ optional arguments:
 
 3. Modify train.py and start training.  
     `python train.py`  
-    Use your trained weights or checkpoint weights with command line option `--model model_file` when using yolo_video.py
-    Remember to modify class path or anchor path, with `--classes class_file` and `--anchors anchor_file`.
+    Use your trained weights or checkpoint weights with command line option `--model_path model_file` when using yolo_video.py
+    Remember to modify class path or anchor path, with `--classes_path class_file` and `--anchors_path anchor_file`.
 
 If you want to use original pretrained weights for YOLOv3:  
     1. `wget https://pjreddie.com/media/files/darknet53.conv.74`  
