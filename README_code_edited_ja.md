@@ -310,3 +310,16 @@ tmp_gt_files_org/
 tmp_pred_files/
 .vscode/
 ```
+
+# 12. camera対応
+
+https://github.com/tfukumori/keras-yolo3/blob/master/yolo_webcam.py
+
+接続したカメラに対してリアルタイムで認識を行う際に使用します。
+オプションを指定することでファイル保存を行うこともできます。
+
+接続したカメラへの認識のソースは以下を参考にしています。
+https://qiita.com/yoyoyo_/items/10d550b03b4b9c175d9c
+
+また、リアルタイムの認識ということでFPSが一定ではないため結果をCBRとして保存するための方法としては、以下を参考にしています。
+https://madeinpc.blog.fc2.com/?no=1364
