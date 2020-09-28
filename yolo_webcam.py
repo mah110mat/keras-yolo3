@@ -61,14 +61,14 @@ def detect_cam(yolo, cam_number, video_directory_path, video_filename):
 
         ret, frame = cap.read()
 
+        # BGR to RGB
+        frame = frame[:,:,(2,1,0)]
+
         # Resize
         h, w = frame.shape[:2]
         rh = int(h * camera_scale)
         rw = int(w * camera_scale)
         image = cv2.resize(frame, (rw, rh))
-
-        # BGR to RGB
-        image = image[:,:,(2,1,0)]
 
         # Detect
         image = Image.fromarray(image)
