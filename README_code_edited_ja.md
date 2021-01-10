@@ -293,7 +293,7 @@ https://github.com/tfukumori/keras-yolo3/commit/564cce259df453366b64921f34412e5d
 
 具体的には以下の変更を行っている（[@caramel_3]https://qiita.com/caramel_3) さんに感謝します）。
 
-- anchors_file引数のデフォルト値を削除（`model_data/yolo_anchors.txt`、または`model_data/yolo_anchors.txt`を指定する）
+- anchors_file引数のデフォルト値を削除（`model_data/yolo_anchors.txt`、または`model_data/tiny_yolo_anchors.txt`を指定する）
 - アンカーファイルのアンカー数に応じて使用するモデルを変更
 - tinyモデルの読み込み関数を追加
 - 重みに加えてモデルも保存するように変更
