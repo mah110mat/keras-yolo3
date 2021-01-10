@@ -27,6 +27,7 @@ DATA_PATH = '/home/share'
 parser = argparse.ArgumentParser(description='Yolo v3 Keras base on TensorFlow implementation.')
 parser.add_argument('--classes_file', type=str, help='The .txt file include dataset <classes>',
                     default='model_data/voc_classes.txt')
+# Anchors File (model_data/yolo_anchors.txt or model_data/tiny_yolo_anchors.txt)
 parser.add_argument('--anchors_file', type=str, help='The .txt file include yolo anchors type')
 # Train File
 parser.add_argument('--yolo_train_file', type=str, help='The .txt file include <img path>, <bbox>, <class>',
