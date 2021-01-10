@@ -291,6 +291,14 @@ video_FourCC    =  cv2.VideoWriter_fourcc(*'MP4V') #OpenCV 3(Python 3.6)では�
 
 https://github.com/tfukumori/keras-yolo3/commit/564cce259df453366b64921f34412e5dcd65cc64
 
+具体的には以下の変更を行っている（[@caramel_3]https://qiita.com/caramel_3) さんに感謝します）。
+
+- anchors_file引数のデフォルト値を削除（`model_data/yolo_anchors.txt`、または`model_data/yolo_anchors.txt` 指定する）
+- アンカーファイルのアンカー数に応じて使用するモデルを変更
+- tinyモデルの読み込み関数を追加
+- 重みに加えてモデルも保存するように変更
+- アウトプットをtinyモデルに対応（出力数がも異なる）
+- TensorBoard用のlogファイルをtinyモデルに対応
 
 # 11. gitignoreへの追加
 
